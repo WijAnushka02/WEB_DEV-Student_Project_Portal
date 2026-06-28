@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './store/authStore';
+import { FiAlertTriangle } from 'react-icons/fi';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -118,7 +119,7 @@ export default function App() {
           <Layout hideFooter>
             <div className="min-h-screen flex items-center justify-center">
               <div className="text-center">
-                <div className="text-5xl mb-4">⚠️</div>
+                <FiAlertTriangle size={44} className="text-red-300 mx-auto mb-4" />
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Failed</h1>
                 <p className="text-gray-500 mb-6">Something went wrong during sign in.</p>
                 <a href="/auth/login" className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors">

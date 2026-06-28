@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiHeart, FiEye, FiGithub, FiExternalLink } from 'react-icons/fi';
+import { FiHeart, FiEye, FiGithub, FiExternalLink, FiCode } from 'react-icons/fi';
 
 export default function ProjectCard({ project, index = 0 }) {
   return (
@@ -20,7 +20,7 @@ export default function ProjectCard({ project, index = 0 }) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <div className="text-6xl opacity-20">🎓</div>
+            <FiCode size={40} className="text-green-300" />
           </div>
         )}
       </Link>

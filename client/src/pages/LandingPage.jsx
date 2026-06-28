@@ -5,8 +5,6 @@ import { FiArrowRight, FiCode, FiUsers, FiBriefcase, FiStar, FiTrendingUp } from
 import api from '../services/api';
 import ProjectCard from '../components/ProjectCard';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
-
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0 },
@@ -107,12 +105,12 @@ export default function LandingPage() {
             </motion.p>
 
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href={`${API_BASE}/auth/google/student`}
+              <Link
+                to="/auth/login"
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-green-200 hover:shadow-green-300 hover:-translate-y-0.5 text-base"
               >
                 Add Your Project <FiArrowRight size={18} />
-              </a>
+              </Link>
               <Link
                 to="/projects"
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border border-gray-200 transition-all duration-200 hover:-translate-y-0.5 text-base"
@@ -223,12 +221,12 @@ export default function LandingPage() {
             <p className="text-green-100 text-lg mb-8 max-w-xl mx-auto">
               Join hundreds of UOK students who are already building their portfolios and getting discovered.
             </p>
-            <a
-              href={`${API_BASE}/auth/google/student`}
+            <Link
+              to="/auth/login"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-green-700 font-bold rounded-xl hover:bg-green-50 transition-all duration-200 shadow-lg hover:-translate-y-0.5 text-base"
             >
               Get Started Free <FiArrowRight size={18} />
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

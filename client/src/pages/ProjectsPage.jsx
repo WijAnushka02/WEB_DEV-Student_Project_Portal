@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiSearch, FiFilter } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiInbox } from 'react-icons/fi';
 import api from '../services/api';
 import ProjectCard from '../components/ProjectCard';
 
@@ -93,7 +93,7 @@ export default function ProjectsPage() {
           </>
         ) : (
           <div className="text-center py-20">
-            <div className="text-5xl mb-4">🔍</div>
+            <FiInbox size={44} className="text-gray-200 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No projects found</h3>
             <p className="text-gray-400 text-sm">Try adjusting your search terms</p>
           </div>

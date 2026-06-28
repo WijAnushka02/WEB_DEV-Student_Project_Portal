@@ -72,7 +72,7 @@ export default function Footer() {
           <p className="text-xs">
             © {new Date().getFullYear()} UOK Connect · Faculty of Computing, University of Kelaniya
           </p>
-          <p className="text-xs">Built with ❤ by the Development Team</p>
+          <p className="text-xs">Built by the Development Team</p>
         </div>
       </div>
     </footer>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiHeart } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiEye, FiHeart, FiCode, FiFolder } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
@@ -76,7 +76,7 @@ export default function DashboardPage() {
                 {project.thumbnail_url ? (
                   <img src={project.thumbnail_url} alt={project.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-green-50 flex items-center justify-center text-2xl flex-shrink-0">🎓</div>
+                  <div className="w-16 h-16 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0"><FiCode size={24} className="text-green-400" /></div>
                 )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 truncate">{project.title}</h3>
@@ -114,7 +114,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-            <div className="text-5xl mb-4">📂</div>
+            <FiFolder size={40} className="text-gray-200 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No projects yet</h3>
             <p className="text-gray-400 text-sm mb-6">Add your first project to get started</p>
             {user?.role === 'student' && (
