@@ -39,10 +39,18 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, [dropdownOpen]);
 
-  const navLinks = [
-    { to: '/projects', label: 'Projects' },
-    { to: '/students', label: 'Students' },
-  ];
+  let navLinks = [];
+  if (user?.role === 'admin') {
+    navLinks = [
+      { to: '/admin/dashboard', label: 'Dashboard' },
+      { to: '/projects', label: 'All Projects' },
+    ];
+  } else if (user?.role !== 'recruiter') {
+    navLinks = [
+      { to: '/projects', label: 'Projects' },
+      { to: '/students', label: 'Students' },
+    ];
+  }
 
   return (
     <motion.div
@@ -60,15 +68,18 @@ export default function Navbar() {
           shadow-lg shadow-gray-900/[0.06]"
         >
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
+          <Link to={user?.role === 'admin' ? '/admin/dashboard' : '/'} className="flex items-center gap-2.5 group flex-shrink-0">
             <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center shadow-sm group-hover:bg-green-700 transition-colors">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2 11 L7 3 L12 11" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M4 8.5 H10" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </div>
-            <span className="font-bold text-gray-900 text-[15px] tracking-tight">
-              UOK <span className="text-green-600">Connect</span>
+            <span className="font-bold text-gray-900 text-[15px] tracking-tight flex items-center">
+              UOK <span className="text-green-600 ml-1">Connect</span>
+              {user?.role === 'admin' && (
+                <span className="ml-2 px-1.5 py-0.5 bg-gray-900 text-white text-[10px] rounded uppercase tracking-wider">Admin</span>
+              )}
             </span>
           </Link>
 
@@ -147,18 +158,22 @@ export default function Navbar() {
                             <p className="text-xs text-green-600 mt-0.5">{user.student_id}</p>
                           )}
                         </div>
-                        <Link
-                          to="/dashboard"
-                          className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <FiGrid size={14} className="text-gray-400" /> Dashboard
-                        </Link>
-                        <Link
-                          to={`/profile/${user.id}`}
-                          className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <FiUser size={14} className="text-gray-400" /> My Profile
-                        </Link>
+                        {user.role !== 'recruiter' && (
+                          <>
+                            <Link
+                              to={user.role === 'admin' ? '/admin/dashboard' : '/dashboard'}
+                              className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <FiGrid size={14} className="text-gray-400" /> Dashboard
+                            </Link>
+                            <Link
+                              to={`/profile/${user.id}`}
+                              className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <FiUser size={14} className="text-gray-400" /> My Profile
+                            </Link>
+                          </>
+                        )}
                         {unreadCount > 0 && (
                           <Link
                             to="/notifications"
@@ -254,7 +269,9 @@ export default function Navbar() {
                         <p className="text-xs font-semibold text-gray-800">{user.name}</p>
                         {user.student_id && <p className="text-xs text-green-600">{user.student_id}</p>}
                       </div>
-                      <Link to="/dashboard" className="block px-4 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50">Dashboard</Link>
+                      {user.role !== 'recruiter' && (
+                        <Link to={user.role === 'admin' ? '/admin/dashboard' : '/dashboard'} className="block px-4 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50">Dashboard</Link>
+                      )}
                       <Link to="/notifications" className="block px-4 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
                         Notifications
                         {unreadCount > 0 && (
