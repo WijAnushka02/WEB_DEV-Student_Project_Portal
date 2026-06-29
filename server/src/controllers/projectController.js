@@ -6,7 +6,7 @@ const getAllProjects = async (req, res) => {
   try {
     const { page = 1, limit = 12, search, tag, status = 'published' } = req.query;
     
-    if ((status === 'draft' || status === 'all') && (!req.user || req.user.role !== 'admin')) {
+    if (status !== 'published' && (!req.user || req.user.role !== 'admin')) {
       return res.status(403).json({ success: false, message: `Forbidden: Cannot view ${status} projects` });
     }
 
@@ -90,7 +90,7 @@ const getProject = async (req, res) => {
     }
 
     const project = result.rows[0];
-    if (project.status === 'draft') {
+    if (project.status !== 'published') {
       const isOwner = req.user && req.user.id === project.user_id;
       const isAdmin = req.user && req.user.role === 'admin';
       if (!isOwner && !isAdmin) {
