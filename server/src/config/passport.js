@@ -2,11 +2,24 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const pool = require('./db');
 
+/**
+ * Role resolution via OAuth `state` parameter.
+ *
+ * Initiator sets state to one of:
+ *   'student'   – /auth/google/student   → create/login student
+ *   'recruiter' – /auth/google/recruiter  → create/login recruiter
+ *   'login'     – /auth/google/login      → login only (no new user)
+ *   'admin'     – /auth/admin/google      → login only, must already be admin in DB
+ *
+ * Admin accounts are NEVER auto-created here.
+ * They are inserted directly via SQL (see scripts/create_admin.sql).
+ */
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Single callback URL – all flows share it; role is in the state param
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
       passReqToCallback: true,
     },
@@ -17,54 +30,61 @@ passport.use(
         const name = profile.displayName;
         const profilePic = profile.photos?.[0]?.value || null;
 
-        // Check if this is an admin auth flow (via session flag set before OAuth)
-        const isAdminFlow = req.session?.adminAuthFlow === true;
-        const pendingRole = req.session?.pendingRole || null;
+        // State is set by our initiation routes and returned unchanged by Google
+        const state = req.query?.state || 'recruiter';
 
-        let result = await pool.query(
-          'SELECT * FROM users WHERE google_id = $1',
-          [googleId]
+        // Existing user 
+        const result = await pool.query(
+          'SELECT * FROM users WHERE google_id = $1 OR (email = $2 AND google_id IS NULL)',
+          [googleId, email]
         );
 
         if (result.rows.length > 0) {
-          // Existing user
           const user = result.rows[0];
 
-          // If admin flow but user is not admin, reject
-          if (isAdminFlow && user.role !== 'admin') {
-            return done(null, false, { message: 'Not an admin account.' });
+          // Admin flow: reject if this Google account is not already an admin in DB
+          if (state === 'admin' && user.role !== 'admin') {
+            return done(null, false, { message: 'This Google account is not registered as an admin.' });
           }
 
-          // Update profile pic in case it changed
-          await pool.query(
-            'UPDATE users SET profile_pic = $1, updated_at = NOW() WHERE id = $2',
-            [profilePic, user.id]
-          );
+          // Link Google ID to an existing email/password account (first Google login)
+          if (!user.google_id) {
+            await pool.query(
+              'UPDATE users SET google_id = $1, profile_pic = COALESCE($2, profile_pic), updated_at = NOW() WHERE id = $3',
+              [googleId, profilePic, user.id]
+            );
+          } else {
+            // Refresh profile pic
+            await pool.query(
+              'UPDATE users SET profile_pic = $1, updated_at = NOW() WHERE id = $2',
+              [profilePic, user.id]
+            );
+          }
 
           return done(null, { ...user, profile_pic: profilePic });
         }
 
-        // New user — determine role
-        let role = 'recruiter'; // default for new OAuth signups (companies/recruiters)
-
-        if (isAdminFlow) {
-          role = 'admin';
-        } else if (pendingRole === 'student') {
-          role = 'student';
+        //  New user 
+        // Admin and login-only flows must not create accounts
+        if (state === 'admin') {
+          return done(null, false, {
+            message: 'No admin account found for this Google account. Contact a super-admin.',
+          });
+        }
+        if (state === 'login') {
+          return done(null, false, {
+            message: 'No account found. Please register first.',
+          });
         }
 
-        // For students, student_id will be set after OAuth via a separate endpoint
+        // Determine role from state
+        const role = state === 'student' ? 'student' : 'recruiter';
+
         const insertResult = await pool.query(
           `INSERT INTO users (google_id, name, email, profile_pic, role, admin_verified)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-          [googleId, name, email, profilePic, role, isAdminFlow]
+           VALUES ($1, $2, $3, $4, $5, false) RETURNING *`,
+          [googleId, name, email, profilePic, role]
         );
-
-        // Clear admin flow session flags
-        if (req.session) {
-          delete req.session.adminAuthFlow;
-          delete req.session.pendingRole;
-        }
 
         return done(null, insertResult.rows[0]);
       } catch (err) {
@@ -74,10 +94,8 @@ passport.use(
   )
 );
 
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
-
+// Passport session serialise/deserialise (used only during the short OAuth redirect)
+passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);

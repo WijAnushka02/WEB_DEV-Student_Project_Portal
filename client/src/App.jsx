@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './store/authStore';
 import { FiAlertTriangle } from 'react-icons/fi';
@@ -29,6 +29,14 @@ function Layout({ children, hideFooter }) {
   );
 }
 
+// Redirect logged-in users away from auth pages
+function GuestRoute({ children }) {
+  const { user, loading } = useAuthStore();
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
 export default function App() {
   const { fetchMe } = useAuthStore();
 
@@ -47,21 +55,29 @@ export default function App() {
       <Toaster
         position="top-right"
         toastOptions={{
-          duration: 3000,
+          duration: 4000,
           style: { borderRadius: '12px', fontSize: '14px' },
         }}
       />
       <Routes>
-        {/* Public routes */}
+        {/* ── Public routes ──*/}
         <Route path="/" element={<Layout><LandingPage /></Layout>} />
         <Route path="/projects" element={<Layout><ProjectsPage /></Layout>} />
         <Route path="/projects/:id" element={<Layout><ProjectDetailPage /></Layout>} />
         <Route path="/profile/:id" element={<Layout><StudentProfilePage /></Layout>} />
-        <Route path="/students" element={<Layout><ProjectsPage /></Layout>} />
-        <Route path="/auth/login" element={<Layout hideFooter><LoginPage /></Layout>} />
-        <Route path="/auth/register" element={<Layout hideFooter><RegisterPage /></Layout>} />
 
-        {/* Complete profile after OAuth */}
+        {/* ── Auth routes (redirect to dashboard if already logged in) ─ */}
+        <Route path="/auth/login" element={
+          <GuestRoute><Layout hideFooter><LoginPage /></Layout></GuestRoute>
+        } />
+        <Route path="/auth/register" element={
+          <GuestRoute><Layout hideFooter><RegisterPage /></Layout></GuestRoute>
+        } />
+
+        {/* ── Admin auth (separate, hidden portal) ──*/}
+        <Route path="/admin/auth" element={<AdminAuthPage />} />
+
+        {/*Protected: complete profile (new OAuth students)*/}
         <Route
           path="/complete-profile"
           element={
@@ -71,7 +87,7 @@ export default function App() {
           }
         />
 
-        {/* Protected student routes */}
+        {/* ── Protected: unified dashboard (role-aware content inside) ── */}
         <Route
           path="/dashboard"
           element={
@@ -80,6 +96,18 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Legacy admin dashboard alias */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute roles={['admin']}>
+              <Navigate to="/dashboard" replace />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Protected: project management (students + admins) ────────── */}
         <Route
           path="/projects/new"
           element={
@@ -96,6 +124,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* ── Protected: notifications ─── */}
         <Route
           path="/notifications"
           element={
@@ -105,35 +135,38 @@ export default function App() {
           }
         />
 
-        {/* Admin hidden portal */}
-        <Route path="/admin/auth" element={<AdminAuthPage />} />
+        {/* ── Auth error page ───*/}
         <Route
-          path="/admin/dashboard"
+          path="/auth/error"
           element={
-            <ProtectedRoute roles={['admin']}>
-              <Layout><DashboardPage /></Layout>
-            </ProtectedRoute>
+            <Layout hideFooter>
+              <AuthErrorPage />
+            </Layout>
           }
         />
-
-        {/* Auth error */}
-        <Route path="/auth/error" element={
-          <Layout hideFooter>
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <FiAlertTriangle size={44} className="text-red-300 mx-auto mb-4" />
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Failed</h1>
-                <p className="text-gray-500 mb-6">Something went wrong during sign in.</p>
-                <a href="/auth/login" className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors">
-                  Try Again
-                </a>
-              </div>
-            </div>
-          </Layout>
-        } />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+function AuthErrorPage() {
+  const params = new URLSearchParams(window.location.search);
+  const message = params.get('message') || 'Something went wrong during sign in.';
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center max-w-sm px-6">
+        <FiAlertTriangle size={44} className="text-red-300 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Failed</h1>
+        <p className="text-gray-500 mb-6">{decodeURIComponent(message)}</p>
+        <a
+          href="/auth/login"
+          className="px-5 py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
+        >
+          Back to Login
+        </a>
+      </div>
+    </div>
   );
 }

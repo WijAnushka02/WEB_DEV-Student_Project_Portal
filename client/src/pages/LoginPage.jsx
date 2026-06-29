@@ -1,9 +1,7 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-  FiArrowRight, FiCode, FiUsers, FiBriefcase, FiTrendingUp
-} from 'react-icons/fi';
+import { FiArrowRight, FiCode, FiUsers, FiBriefcase, FiTrendingUp, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
@@ -19,14 +17,13 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// Floating stat card for the left panel
-function StatCard({ icon: Icon, value, label, delay = 0, className = '' }) {
+function StatCard({ icon: Icon, value, label, delay = 0 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
-      className={`bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg ${className}`}
+      className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg"
     >
       <div className="w-8 h-8 bg-white/15 rounded-xl flex items-center justify-center flex-shrink-0">
         <Icon size={16} className="text-white" />
@@ -39,63 +36,54 @@ function StatCard({ icon: Icon, value, label, delay = 0, className = '' }) {
   );
 }
 
-// Floating project card preview
-function MiniProjectCard({ title, tech, delay = 0 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay, duration: 0.5 }}
-      className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3.5 shadow-md"
-    >
-      <div className="w-full h-1.5 bg-white/20 rounded-full mb-2.5">
-        <div className="h-full bg-white/50 rounded-full" style={{ width: '60%' }} />
-      </div>
-      <p className="text-white text-xs font-semibold truncate">{title}</p>
-      <div className="flex gap-1.5 mt-1.5">
-        {tech.map((t) => (
-          <span key={t} className="text-[10px] px-1.5 py-0.5 bg-white/10 text-white/70 rounded-md">{t}</span>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { fetchMe } = useAuthStore();
+  const [touched, setTouched] = useState({});
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  // Show errors redirected back from Google OAuth failure
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err) toast.error(decodeURIComponent(err));
+  }, [searchParams]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setTouched({ email: true, password: true });
+    if (!emailValid || password.length < 1) return;
+    
     setIsLoading(true);
     try {
-      await api.post('/auth/login', { email, password });
-      toast.success('Login successful!');
+      const res = await api.post('/auth/login', { email, password });
       await fetchMe();
-      navigate('/dashboard');
+      toast.success('Welcome back!');
+      // Role-based redirect: all roles go to /dashboard which shows role-aware content
+      navigate('/dashboard', { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast.error(err.response?.data?.message || 'Login failed. Check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const isFormValid = email.trim().length > 0 && password.length >= 6;
+  const isFormValid = emailValid && password.length >= 1;
 
   return (
     <div className="h-screen flex">
-      {/* ── Left panel ─────────────────────────────────────────────────────── */}
+      {/* ── Left panel ──────────────────────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] relative overflow-hidden flex-col justify-between p-10 pt-24
         bg-gradient-to-br from-green-700 via-green-600 to-emerald-500"
       >
-        {/* Background texture */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
           <div className="absolute bottom-20 left-0 w-64 h-64 bg-black/10 rounded-full blur-3xl" />
-          {/* Grid pattern */}
           <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -106,7 +94,6 @@ export default function LoginPage() {
           </svg>
         </div>
 
-        {/* Top — logo */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -122,7 +109,6 @@ export default function LoginPage() {
           <span className="font-bold text-white text-lg tracking-tight">UOK Connect</span>
         </motion.div>
 
-        {/* Centre — hero text */}
         <div className="relative space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -138,7 +124,6 @@ export default function LoginPage() {
             </p>
           </motion.div>
 
-          {/* Mini stat cards */}
           <div className="grid grid-cols-2 gap-3 max-w-xs">
             <StatCard icon={FiCode} value="500+" label="Projects" delay={0.4} />
             <StatCard icon={FiUsers} value="200+" label="Students" delay={0.5} />
@@ -147,25 +132,12 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom — floating project cards */}
-        <div className="relative space-y-2.5">
-          <MiniProjectCard
-            title="Smart Campus Navigation System"
-            tech={['React', 'Node.js', 'ML']}
-            delay={0.9}
-          />
-          <MiniProjectCard
-            title="Lecture Attendance Tracker"
-            tech={['Flutter', 'Firebase']}
-            delay={1.0}
-          />
-          <p className="text-white/40 text-xs mt-3">
-            Faculty of Computing · University of Kelaniya
-          </p>
+        <div className="relative">
+          <p className="text-white/40 text-xs">Faculty of Computing · University of Kelaniya</p>
         </div>
       </div>
 
-      {/* ── Right panel ────────────────────────────────────────────────────── */}
+      {/* ── Right panel ─────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 sm:px-10 pb-16 pt-24 bg-white">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
@@ -196,23 +168,43 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                 placeholder="you@example.com"
+                autoComplete="email"
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-shadow"
+                className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-shadow ${
+                  touched.email && !emailValid
+                    ? 'border-red-300 bg-red-50 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-green-200 focus:border-green-400'
+                }`}
               />
+              {touched.email && !emailValid && (
+                <p className="mt-1.5 text-xs text-red-500">Please enter a valid email address.</p>
+              )}
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Password
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-shadow"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  className="w-full px-4 py-3 pr-11 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-200 focus:border-green-400 transition-shadow"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -224,8 +216,17 @@ export default function LoginPage() {
                   : 'bg-green-100 text-green-400 cursor-not-allowed'
               }`}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
-              {!isLoading && isFormValid && <FiArrowRight size={15} />}
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Signing in…
+                </>
+              ) : (
+                <>
+                  Sign In
+                  {isFormValid && <FiArrowRight size={15} />}
+                </>
+              )}
             </button>
           </form>
 
@@ -236,19 +237,26 @@ export default function LoginPage() {
             <div className="flex-1 h-px bg-gray-100" />
           </div>
 
+          {/* Google login — uses the 'login' flow (existing users only) */}
           <button
             type="button"
-            onClick={() => window.location.href = `${API_BASE}/auth/google/student`}
+            onClick={() => (window.location.href = `${API_BASE}/auth/google/login`)}
             className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-all duration-200 shadow-sm"
           >
             <GoogleIcon />
-            Google
+            Continue with Google
           </button>
 
           <p className="text-center text-sm text-gray-500 mt-8">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link to="/auth/register" className="text-green-600 hover:text-green-700 font-medium">
               Register here
+            </Link>
+          </p>
+
+          <p className="text-center mt-3">
+            <Link to="/admin/auth" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              Admin portal →
             </Link>
           </p>
         </motion.div>

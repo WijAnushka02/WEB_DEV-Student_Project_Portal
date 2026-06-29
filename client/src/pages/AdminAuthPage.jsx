@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiShield, FiLock, FiArrowRight, FiEye, FiEyeOff, FiCheckCircle,
@@ -39,8 +39,21 @@ export default function AdminAuthPage() {
   const [secretKey, setSecretKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [adminFlowToken, setAdminFlowToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [keyError, setKeyError] = useState('');
+  const [searchParams] = useSearchParams();
+
+  // Show errors redirected back from server (e.g. not an admin account)
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err) {
+      toast.error(decodeURIComponent(err));
+      // Reset flow so the admin can try again
+      setVerified(false);
+      setAdminFlowToken('');
+    }
+  }, [searchParams]);
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -48,9 +61,11 @@ export default function AdminAuthPage() {
     setKeyError('');
     setLoading(true);
     try {
-      await api.post('/auth/admin/verify-key', { secretKey });
+      const res = await api.post('/auth/admin/verify-key', { secretKey });
+      // Server returns a short-lived token proving the key was entered
+      setAdminFlowToken(res.data.adminFlowToken);
       setVerified(true);
-      toast.success('Key verified.');
+      toast.success('Key verified. Complete sign-in with Google.');
     } catch (err) {
       setKeyError(err.response?.data?.message || 'Invalid secret key.');
     } finally {
@@ -60,11 +75,10 @@ export default function AdminAuthPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* ── Left panel ─────────────────────────────────────────────────────── */}
+      {/* ── Left panel ──*/}
       <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] relative overflow-hidden flex-col justify-between p-10
         bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900"
       >
-        {/* Background decoration */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 right-0 w-72 h-72 bg-green-500/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/3 rounded-full blur-3xl" />
@@ -78,11 +92,9 @@ export default function AdminAuthPage() {
           </svg>
         </div>
 
-        {/* Top — logo */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
           className="relative flex items-center gap-3"
         >
           <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
@@ -94,12 +106,11 @@ export default function AdminAuthPage() {
           <span className="font-bold text-white text-lg tracking-tight">UOK Connect</span>
         </motion.div>
 
-        {/* Centre */}
         <div className="relative space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
+            transition={{ delay: 0.2 }}
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-full mb-4">
               <FiShield size={13} className="text-green-400" />
@@ -109,38 +120,32 @@ export default function AdminAuthPage() {
               Admin<br />Portal
             </h1>
             <p className="text-white/50 text-sm mt-4 max-w-xs leading-relaxed">
-              This portal is for authorised administrators only.
-              Access requires a valid secret key followed by Google authentication.
+              Authorised administrators only. Two-step verification: secret key + Google account.
             </p>
           </motion.div>
 
-          {/* Capability list */}
           <div className="space-y-2.5">
-            <AdminStatCard icon={FiUsers} label="Manage all users and accounts" delay={0.4} />
+            <AdminStatCard icon={FiUsers} label="Manage users and roles" delay={0.4} />
             <AdminStatCard icon={FiActivity} label="Monitor platform activity" delay={0.5} />
             <AdminStatCard icon={FiAlertTriangle} label="Remove inappropriate content" delay={0.6} />
           </div>
         </div>
 
-        {/* Bottom note */}
-        <motion.div
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="relative"
+          className="relative text-white/30 text-xs"
         >
-          <p className="text-white/30 text-xs">
-            This page is not publicly listed · For authorized personnel only
-          </p>
-        </motion.div>
+          This page is not publicly listed · For authorised personnel only
+        </motion.p>
       </div>
 
-      {/* ── Right panel ────────────────────────────────────────────────────── */}
+      {/* ── Right panel ─────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col justify-center items-center px-6 sm:px-10 py-16 bg-white">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
           className="w-full max-w-[380px]"
         >
           {/* Mobile brand */}
@@ -154,18 +159,15 @@ export default function AdminAuthPage() {
             <span className="font-bold text-gray-900">UOK <span className="text-green-600">Connect</span></span>
           </Link>
 
-          {/* Header */}
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
               <FiShield size={20} className="text-gray-700" />
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Admin Access</h2>
-            </div>
+            <h2 className="text-2xl font-bold text-gray-900">Admin Access</h2>
           </div>
           <p className="text-gray-500 text-sm mb-8">
             {verified
-              ? 'Key verified. Complete sign-in with Google.'
+              ? 'Key verified. Complete sign-in with your admin Google account.'
               : 'Enter your admin secret key to continue.'}
           </p>
 
@@ -199,7 +201,6 @@ export default function AdminAuthPage() {
             ))}
           </div>
 
-          {/* Form */}
           <AnimatePresence mode="wait">
             {!verified ? (
               <motion.form
@@ -222,6 +223,7 @@ export default function AdminAuthPage() {
                       onChange={(e) => { setSecretKey(e.target.value); setKeyError(''); }}
                       placeholder="Enter your secret key"
                       autoFocus
+                      autoComplete="off"
                       className={`w-full px-4 py-3 pr-11 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-shadow ${
                         keyError
                           ? 'border-red-300 bg-red-50 focus:ring-red-200'
@@ -231,7 +233,7 @@ export default function AdminAuthPage() {
                     <button
                       type="button"
                       onClick={() => setShowKey((v) => !v)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
                       {showKey ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                     </button>
@@ -278,26 +280,32 @@ export default function AdminAuthPage() {
                 <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-start gap-3">
                   <FiCheckCircle size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-green-800">
-                    Secret key verified. Sign in with the Google account registered as admin.
+                    Secret key verified. Sign in with the Google account registered as admin in the database.
                   </p>
                 </div>
 
+                {/* Pass the adminFlowToken as ?t= so the server can verify this step wasn't skipped */}
                 <a
-                  href={`${API_BASE}/auth/admin/google`}
+                  href={`${API_BASE}/auth/admin/google?t=${encodeURIComponent(adminFlowToken)}`}
                   className="flex items-center justify-center gap-2.5 w-full py-3 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl transition-all shadow-sm"
                 >
                   <GoogleIcon />
                   Sign in with Google
                 </a>
+
+                <button
+                  type="button"
+                  onClick={() => { setVerified(false); setAdminFlowToken(''); setSecretKey(''); }}
+                  className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
+                >
+                  ← Enter a different key
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
           <div className="mt-8 pt-6 border-t border-gray-100">
-            <Link
-              to="/auth/login"
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-            >
+            <Link to="/auth/login" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
               ← Back to login
             </Link>
           </div>

@@ -5,9 +5,8 @@ const validate = require('../middleware/validate');
 const { authenticate } = require('../middleware/auth');
 const {
   handleGoogleCallback,
-  handleAdminGoogleCallback,
-  initiateStudentAuth,
   validateAdminKey,
+  requireAdminFlowToken,
   logout,
   getMe,
   completeProfile,
@@ -17,46 +16,70 @@ const {
 
 const router = express.Router();
 
-// ── Student / Recruiter Google OAuth ──────────────────────────────────────────
-// Student flow — sets pendingRole=student in session before redirect
-router.get('/google/student', initiateStudentAuth, passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false,
-}));
+// ── Google OAuth — Student ────────────────────────────────────────────────────
+// Sets state='student' so the strategy knows to create a student account for new users
+router.get('/google/student', (req, res, next) => {
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: 'student',
+    session: false,
+  })(req, res, next);
+});
 
-// Recruiter / company flow
-router.get('/google/recruiter', passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false,
-}));
+// ── Google OAuth — Recruiter ──────────────────────────────────────────────────
+router.get('/google/recruiter', (req, res, next) => {
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: 'recruiter',
+    session: false,
+  })(req, res, next);
+});
 
-// Shared callback for student & recruiter
-router.get('/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/auth/error` }),
-  handleGoogleCallback
-);
+// ── Google OAuth — Login (existing users only, any role) ─────────────────────
+// Used from the login page. Does NOT create new accounts.
+router.get('/google/login', (req, res, next) => {
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: 'login',
+    session: false,
+  })(req, res, next);
+});
 
-// ── Admin OAuth (hidden route) ─────────────────────────────────────────────────
-// Step 1: Validate secret key (called from hidden admin login page)
-router.post('/admin/verify-key',
-  [body('secretKey').notEmpty().withMessage('Secret key is required.')],
+// ── Google OAuth — Admin (existing DB admin only) ─────────────────────────────
+// Step 1: POST /auth/admin/verify-key  → validates secret key, returns adminFlowToken
+// Step 2: GET  /auth/admin/google?t=TOKEN  → verifies token, initiates OAuth with state='admin'
+// Step 3: Google redirects to /auth/google/callback with state='admin'
+// The Passport strategy only succeeds if the Google account is already in DB with role='admin'
+
+router.post(
+  '/admin/verify-key',
+  [body('secretKey').trim().notEmpty().withMessage('Secret key is required.')],
   validate,
   validateAdminKey
 );
 
-// Step 2: After key verified, frontend redirects here to start OAuth
-router.get('/admin/google', passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false,
-}));
+router.get('/admin/google', requireAdminFlowToken, (req, res, next) => {
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: 'admin',
+    session: false,
+  })(req, res, next);
+});
 
-// Admin-specific callback
-router.get('/admin/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: `${process.env.CLIENT_URL}/admin/auth?error=1` }),
-  handleAdminGoogleCallback
-);
+// ── Shared Google callback (all flows) ───────────────────────────────────────
+// All Google OAuth flows return here.  The `state` query param tells the callback
+// which flow it is and where to redirect on failure.
+router.get('/google/callback', (req, res, next) => {
+  passport.authenticate('google', { session: false }, (err, user, info) => {
+    if (err) return next(err);
+    // Attach user and authInfo to req for handleGoogleCallback
+    req.user = user || null;
+    req.authInfo = info || {};
+    next();
+  })(req, res, next);
+}, handleGoogleCallback);
 
-// ── General endpoints ──────────────────────────────────────────────────────────
+// General endpoints
 router.post('/logout', logout);
 router.get('/me', authenticate, getMe);
 
@@ -68,17 +91,35 @@ router.post(
   completeProfile
 );
 
-// ── Local Auth ────────────────────────────────────────────────────────────────
-router.post('/register', [
-  body('name').trim().notEmpty().withMessage('Name is required.'),
-  body('email').isEmail().withMessage('Valid email is required.'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters.'),
-  body('role').isIn(['student', 'recruiter']).withMessage('Invalid role.'),
-], validate, registerLocal);
+// ── Local auth ────────────────────────────────────────────────────────────────
+router.post(
+  '/register',
+  [
+    body('name').trim().notEmpty().withMessage('Full name is required.'),
+    body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+    body('password')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters.')
+      .matches(/[A-Z]/)
+      .withMessage('Password must contain at least one uppercase letter.')
+      .matches(/[0-9]/)
+      .withMessage('Password must contain at least one number.'),
+    body('role')
+      .isIn(['student', 'recruiter'])
+      .withMessage('Role must be student or recruiter.'),
+  ],
+  validate,
+  registerLocal
+);
 
-router.post('/login', [
-  body('email').isEmail().withMessage('Valid email is required.'),
-  body('password').notEmpty().withMessage('Password is required.'),
-], validate, loginLocal);
+router.post(
+  '/login',
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+    body('password').notEmpty().withMessage('Password is required.'),
+  ],
+  validate,
+  loginLocal
+);
 
 module.exports = router;
