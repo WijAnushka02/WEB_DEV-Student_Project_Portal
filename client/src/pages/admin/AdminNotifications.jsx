@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import useAdminStore from '../../store/adminStore';
 import TimeAgo from '../../components/admin/TimeAgo';
+import UserAvatar from '../../components/admin/UserAvatar';
 
 export default function AdminNotifications() {
   const { notifications, unreadCount, loadNotifications, markRead, markAllRead, loading } = useAdminStore();
@@ -47,13 +48,7 @@ export default function AdminNotifications() {
                     }`}
                 >
                   <div className="flex items-start gap-4 overflow-hidden">
-                    {n.actor_pic ? (
-                      <img src={n.actor_pic} alt={n.actor_name || 'Actor'} className="w-10 h-10 rounded-full object-cover shrink-0 mt-0.5" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
-                        {n.actor_name?.[0]?.toUpperCase() || 'U'}
-                      </div>
-                    )}
+                    <UserAvatar src={n.actor_pic} name={n.actor_name} size="md" colorScheme="indigo" className="mt-0.5" />
                     <div className="overflow-hidden">
                       <p className="text-sm font-medium text-gray-900">{n.message}</p>
                       <div className="flex items-center gap-2 mt-1">

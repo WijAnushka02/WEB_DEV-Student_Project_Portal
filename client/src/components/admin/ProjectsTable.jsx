@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { FiSearch, FiTrash2, FiExternalLink, FiCode, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import useDebounce from '../../hooks/useDebounce';
+import DataTable from './DataTable';
+import StatusBadge from './StatusBadge';
 
 /* ── Skeleton row ──────────────────────────────────────────────── */
 function SkeletonRow() {
@@ -17,20 +20,31 @@ function SkeletonRow() {
   );
 }
 
+/* ── Project thumbnail helper ──────────────────────────────────── */
+function ProjectThumbnail({ src, title }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={title}
+        className="w-11 h-11 rounded-xl object-cover border border-gray-100"
+      />
+    );
+  }
+  return (
+    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
+      <FiCode size={18} className="text-green-400" />
+    </div>
+  );
+}
+
 /* ── Main component ────────────────────────────────────────────── */
 export default function ProjectsTable() {
   const [projects, setProjects] = useState([]);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const timerRef = useRef(null);
+  const [search, setSearch]     = useState('');
+  const [loading, setLoading]   = useState(true);
 
-  // Debounce
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setDebouncedSearch(search), 400);
-    return () => clearTimeout(timerRef.current);
-  }, [search]);
+  const debouncedSearch = useDebounce(search, 400);
 
   // Fetch
   const fetchProjects = useCallback(async () => {
@@ -66,13 +80,93 @@ export default function ProjectsTable() {
     const newStatus = project.status === 'published' ? 'hidden' : 'published';
     try {
       await api.patch(`/admin/projects/${project.id}`, { status: newStatus });
-      setProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, status: newStatus } : p)));
+      setProjects((prev) =>
+        prev.map((p) => (p.id === project.id ? { ...p, status: newStatus } : p))
+      );
       toast.success(`Project marked as ${newStatus}.`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status.');
     }
   };
 
+  // ── Column definitions ───────────────────────────────────────
+  const columns = [
+    {
+      key: 'project',
+      label: 'Project',
+      render: (p) => (
+        <div className="flex items-center gap-3">
+          <ProjectThumbnail src={p.thumbnail_url} title={p.title} />
+          <div className="min-w-0">
+            <div className="font-semibold text-gray-900 text-sm truncate max-w-[220px]">
+              {p.title}
+            </div>
+            <div className="text-xs text-gray-400 truncate max-w-[220px]">
+              {p.description || 'No description'}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'author',
+      label: 'Author',
+      render: (p) => (
+        <span className="text-sm text-gray-600">
+          {p.author_name || p.author?.name || 'Unknown'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (p) => <StatusBadge status={p.status} />,
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (p) => (
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/projects/${p.id}`}
+            title="View project"
+            className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+          >
+            <FiExternalLink size={15} />
+          </Link>
+          <Link
+            to={`/admin/projects/${p.id}/edit`}
+            title="Edit project"
+            className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+          >
+            <FiEdit2 size={15} />
+          </Link>
+          <button
+            onClick={() => handleToggleVisibility(p)}
+            title={p.status === 'published' ? 'Hide from public' : 'Publish project'}
+            className={`p-2 rounded-lg transition-colors ${
+              p.status === 'published'
+                ? 'text-amber-600 hover:bg-amber-50'
+                : 'text-green-600 hover:bg-green-50'
+            }`}
+          >
+            {p.status === 'published' ? <FiEyeOff size={15} /> : <FiEye size={15} />}
+          </button>
+          <button
+            onClick={() => handleDelete(p)}
+            title="Delete"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                       text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
+          >
+            <FiTrash2 size={13} />
+            Delete
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  // ── Render ──────────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -94,124 +188,14 @@ export default function ProjectsTable() {
         />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider">
-            <tr>
-              <th className="px-6 py-3.5 font-semibold">Project</th>
-              <th className="px-6 py-3.5 font-semibold">Author</th>
-              <th className="px-6 py-3.5 font-semibold">Status</th>
-              <th className="px-6 py-3.5 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
-            ) : projects.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-6 py-16 text-center text-gray-400 text-sm">
-                  No projects found.
-                </td>
-              </tr>
-            ) : (
-              <AnimatePresence>
-                {projects.map((p) => (
-                  <motion.tr
-                    key={p.id}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="hover:bg-gray-50/50 transition-colors"
-                  >
-                    {/* Project cell */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {p.thumbnail_url ? (
-                          <img
-                            src={p.thumbnail_url}
-                            alt={p.title}
-                            className="w-11 h-11 rounded-xl object-cover border border-gray-100"
-                          />
-                        ) : (
-                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
-                            <FiCode size={18} className="text-green-400" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="font-semibold text-gray-900 text-sm truncate max-w-[220px]">
-                            {p.title}
-                          </div>
-                          <div className="text-xs text-gray-400 truncate max-w-[220px]">
-                            {p.description || 'No description'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Author */}
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {p.author_name || p.author?.name || 'Unknown'}
-                    </td>
-
-                    {/* Status badge */}
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        p.status === 'published'
-                          ? 'bg-green-50 text-green-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {p.status}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          to={`/projects/${p.id}`}
-                          title="View project"
-                          className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
-                        >
-                          <FiExternalLink size={15} />
-                        </Link>
-                        <Link
-                          to={`/admin/projects/${p.id}/edit`}
-                          title="Edit project"
-                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                        >
-                          <FiEdit2 size={15} />
-                        </Link>
-                        <button
-                          onClick={() => handleToggleVisibility(p)}
-                          title={p.status === 'published' ? 'Hide from public' : 'Publish project'}
-                          className={`p-2 rounded-lg transition-colors ${
-                            p.status === 'published'
-                              ? 'text-amber-600 hover:bg-amber-50'
-                              : 'text-green-600 hover:bg-green-50'
-                          }`}
-                        >
-                          {p.status === 'published' ? <FiEyeOff size={15} /> : <FiEye size={15} />}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(p)}
-                          title="Delete"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                                     text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
-                        >
-                          <FiTrash2 size={13} />
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={projects}
+        loading={loading}
+        emptyMessage="No projects found."
+        animated
+        SkeletonRow={SkeletonRow}
+      />
     </motion.div>
   );
 }

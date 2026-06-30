@@ -6,11 +6,11 @@ import {
   FiAward, FiBriefcase, FiUserPlus, FiTrendingUp,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../services/api';
-import useAuthStore from '../store/authStore';
-import StatCard from '../components/admin/StatCard';
-import UsersTable from '../components/admin/UsersTable';
-import ProjectsTable from '../components/admin/ProjectsTable';
+import api from '../../services/api';
+import useAuthStore from '../../store/authStore';
+import StatCard from '../../components/admin/StatCard';
+import UsersTable from '../../components/admin/UsersTable';
+import ProjectsTable from '../../components/admin/ProjectsTable';
 
 /* ── Tab definitions ─────────────────────────────────────────── */
 const TABS = [

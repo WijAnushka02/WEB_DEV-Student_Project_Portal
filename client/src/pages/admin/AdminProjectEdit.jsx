@@ -5,6 +5,7 @@ import useAdminStore from '../../store/adminStore';
 import api from '../../services/api';
 import TagInput from '../../components/admin/TagInput';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import AdminPageLoader from '../../components/admin/AdminPageLoader';
 
 export default function AdminProjectEdit() {
   const { id } = useParams();
@@ -105,11 +106,7 @@ export default function AdminProjectEdit() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen pt-24 pb-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 p-8 text-center text-gray-500 animate-pulse">Loading project data...</div>
-      </div>
-    );
+    return <AdminPageLoader message="Loading project data..." maxWidth="max-w-3xl" />;
   }
 
   return (

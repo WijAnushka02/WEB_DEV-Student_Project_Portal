@@ -5,6 +5,8 @@ import RoleBadge from '../../components/admin/RoleBadge';
 import StatusBadge from '../../components/admin/StatusBadge';
 import TimeAgo from '../../components/admin/TimeAgo';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import UserAvatar from '../../components/admin/UserAvatar';
+import AdminPageLoader from '../../components/admin/AdminPageLoader';
 
 export default function AdminUserDetail() {
   const { id } = useParams();
@@ -17,21 +19,12 @@ export default function AdminUserDetail() {
   }, [id, loadUserById]);
 
   if (loading?.fetchUser && !selectedUser) {
-    return (
-      <div className="min-h-screen pt-24 pb-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 p-8 text-center text-gray-500 animate-pulse">Loading user details...</div>
-      </div>
-    );
+    return <AdminPageLoader message="Loading user details..." maxWidth="max-w-5xl" />;
   }
 
   if (!selectedUser) {
     return (
-      <div className="min-h-screen pt-24 pb-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 p-8 text-center">
-          <p className="text-gray-500 mb-4">User not found.</p>
-          <button onClick={() => navigate(-1)} className="text-indigo-600 font-semibold">← Back to Users</button>
-        </div>
-      </div>
+      <AdminPageLoader message="User not found." pulse={false} maxWidth="max-w-5xl" />
     );
   }
 
@@ -68,13 +61,7 @@ export default function AdminUserDetail() {
           {/* Left Column */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center space-y-4">
-              {selectedUser.profile_pic ? (
-                <img src={selectedUser.profile_pic} alt={selectedUser.name} className="w-20 h-20 rounded-full object-cover shadow-sm border border-gray-100" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-2xl shadow-sm">
-                  {selectedUser.name?.[0]?.toUpperCase() || 'U'}
-                </div>
-              )}
+              <UserAvatar src={selectedUser.profile_pic} name={selectedUser.name} size="lg" colorScheme="indigo" />
 
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{selectedUser.name}</h2>

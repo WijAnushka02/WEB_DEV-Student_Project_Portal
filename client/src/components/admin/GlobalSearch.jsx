@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiSearch } from 'react-icons/fi';
 import useAdminStore from '../../store/adminStore';
 import RoleBadge from './RoleBadge';
+import UserAvatar from './UserAvatar';
 
 export default function GlobalSearch() {
   const navigate = useNavigate();
@@ -78,13 +79,7 @@ export default function GlobalSearch() {
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-2 overflow-hidden">
-                      {u.profile_pic ? (
-                        <img src={u.profile_pic} alt={u.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0">
-                          {u.name?.[0]?.toUpperCase() || 'U'}
-                        </div>
-                      )}
+                      <UserAvatar src={u.profile_pic} name={u.name} size="xs" colorScheme="indigo" />
                       <span className="text-sm font-medium text-gray-800 truncate">{u.name}</span>
                     </div>
                     <RoleBadge role={u.role} />
