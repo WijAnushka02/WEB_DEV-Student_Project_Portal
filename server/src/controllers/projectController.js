@@ -2,6 +2,8 @@ const pool = require('../config/db');
 const cloudinary = require('../config/cloudinary');
 const emitter = require('../events/eventEmitter');
 
+const viewedProjects = new Set();
+
 const getAllProjects = async (req, res) => {
   try {
     const { page = 1, limit = 12, search, tag, status = 'published' } = req.query;
@@ -69,7 +71,13 @@ const getProject = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.query('UPDATE projects SET view_count = view_count + 1 WHERE id = $1', [id]);
+    if (req.user) {
+      const viewKey = `${req.user.id}-${id}`;
+      if (!viewedProjects.has(viewKey)) {
+        await pool.query('UPDATE projects SET view_count = view_count + 1 WHERE id = $1', [id]);
+        viewedProjects.add(viewKey);
+      }
+    }
 
     const result = await pool.query(
       `SELECT p.*, u.name AS author_name, u.profile_pic AS author_pic, u.student_id,
