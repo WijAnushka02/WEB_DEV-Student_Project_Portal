@@ -144,9 +144,21 @@ export default function ProjectDetailPage() {
                     </Link>
                     <button
                       onClick={async () => {
-                        const nextStatus = project.status === 'published' ? 'hidden' : 'published';
+                        const nextStatus = project.status === 'published' ? 'draft' : 'published';
                         try {
-                          await api.patch(`/admin/projects/${project.id}`, { status: nextStatus });
+                          const formData = new FormData();
+                          formData.append('title', project.title);
+                          formData.append('description', project.description);
+                          formData.append('status', nextStatus);
+                          if (project.github_url) formData.append('github_url', project.github_url);
+                          if (project.demo_url) formData.append('demo_url', project.demo_url);
+                          formData.append('tech_stack', JSON.stringify(project.tech_stack || []));
+                          formData.append('tags', JSON.stringify(project.tags || []));
+
+                          await api.put(`/projects/${project.id}`, formData, { 
+                            headers: { 'Content-Type': 'multipart/form-data' } 
+                          });
+
                           setProject((p) => ({ ...p, status: nextStatus }));
                           toast.success(`Project marked as ${nextStatus}`);
                         } catch {
@@ -155,11 +167,11 @@ export default function ProjectDetailPage() {
                       }}
                       className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm cursor-pointer border ${
                         project.status === 'published'
-                          ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200'
-                          : 'bg-green-100 text-green-800 hover:bg-green-200 border-green-200'
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200 border-green-200'
+                          : 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200'
                       }`}
                     >
-                      {project.status === 'published' ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                      {project.status === 'published' ? <FiEye size={16} /> : <FiEyeOff size={16} />}
                       <span>{project.status === 'published' ? 'Hide from Public' : 'Publish Project'}</span>
                     </button>
                   </div>

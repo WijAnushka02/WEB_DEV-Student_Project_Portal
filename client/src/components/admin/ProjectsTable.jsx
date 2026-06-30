@@ -63,9 +63,21 @@ export default function ProjectsTable() {
 
   // Toggle Visibility
   const handleToggleVisibility = async (project) => {
-    const newStatus = project.status === 'published' ? 'hidden' : 'published';
+    const newStatus = project.status === 'published' ? 'draft' : 'published';
     try {
-      await api.patch(`/admin/projects/${project.id}`, { status: newStatus });
+      const formData = new FormData();
+      formData.append('title', project.title);
+      formData.append('description', project.description);
+      formData.append('status', newStatus);
+      if (project.github_url) formData.append('github_url', project.github_url);
+      if (project.demo_url) formData.append('demo_url', project.demo_url);
+      formData.append('tech_stack', JSON.stringify(project.tech_stack || []));
+      formData.append('tags', JSON.stringify(project.tags || []));
+
+      await api.put(`/projects/${project.id}`, formData, { 
+        headers: { 'Content-Type': 'multipart/form-data' } 
+      });
+
       setProjects((prev) => prev.map((p) => (p.id === project.id ? { ...p, status: newStatus } : p)));
       toast.success(`Project marked as ${newStatus}.`);
     } catch (err) {
@@ -188,11 +200,11 @@ export default function ProjectsTable() {
                           title={p.status === 'published' ? 'Hide from public' : 'Publish project'}
                           className={`p-2 rounded-lg transition-colors ${
                             p.status === 'published'
-                              ? 'text-amber-600 hover:bg-amber-50'
-                              : 'text-green-600 hover:bg-green-50'
+                              ? 'text-green-600 hover:bg-green-50'
+                              : 'text-amber-600 hover:bg-amber-50'
                           }`}
                         >
-                          {p.status === 'published' ? <FiEyeOff size={15} /> : <FiEye size={15} />}
+                          {p.status === 'published' ? <FiEye size={15} /> : <FiEyeOff size={15} />}
                         </button>
                         <button
                           onClick={() => handleDelete(p)}

@@ -21,9 +21,7 @@ import AdminAuthPage from './pages/AdminAuthPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminUserDetail from './pages/admin/AdminUserDetail';
-import AdminProjectEdit from './pages/admin/AdminProjectEdit';
 import AdminNotifications from './pages/admin/AdminNotifications';
-
 function Layout({ children, hideFooter, hideHeader }) {
   return (
     <>
@@ -123,7 +121,7 @@ export default function App() {
           } />
           <Route path="projects/:id/edit" element={
             <ProtectedRoute roles={['admin']}>
-              <Layout><AdminProjectEdit /></Layout>
+              <Layout><ProjectFormPage /></Layout>
             </ProtectedRoute>
           } />
           <Route path="notifications" element={
